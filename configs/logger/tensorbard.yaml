@@ -1,0 +1,5 @@
+# configs/logger/tensorboard.yaml
+_target_: pytorch_lightning.loggers.TensorBoardLogger
+save_dir: tb_logs
+name: stl10_final
+version: ${experiment_name}

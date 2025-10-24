@@ -1,0 +1,7 @@
+# configs/datamodule/stl10.yaml
+_target_: src.datamodules.stl10_datamodule.STL10DataModule
+data_dir: ./data
+batch_size: 32
+num_workers: 4
+val_ratio: 0.2 # 検証データの割合(20%)
+seed: 42       # 再現性のためのシード

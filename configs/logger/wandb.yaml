@@ -1,0 +1,6 @@
+# configs/logger/wandb.yaml
+_target_: pytorch_lightning.loggers.WandbLogger
+project: stl10-lightning-tutorial
+name: ${experiment_name}
+save_dir: wandb
+log_model: all

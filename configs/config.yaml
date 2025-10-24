@@ -1,0 +1,80 @@
+# configs/config.yaml
+# Step 6c: defaults + _target_ を使った完全構成
+
+defaults:
+  - model: efficientnet_b0        # model/efficientnet_b0.yaml を読み込む
+  - datamodule: stl10             # datamodule/stl10.yaml を読み込む
+  - logger: wandb                 # logger/wandb.yaml を読み込む（デフォルト）
+  - callbacks: default            # callbacks/default.yaml を読み込む
+  - trainer: default              # trainer/default.yaml を読み込む
+  - _self_                        # このファイルの設定を最後に適用
+
+# 実験名（オーバーライド可能）
+experiment_name: stl10_final
+
+# Hydraの出力設定
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+
+
+      
+# Step 6b: シンプルなHydra設定
+
+# # 実験名
+# experiment_name: stl10_hydra_basic
+
+# # データ設定
+# data:
+#   data_dir: ./data
+#   batch_size: 32
+#   num_workers: 3
+
+# # モデル設定
+# model:
+#   model_name: efficientnet_b0
+#   num_classes: 10
+#   lr: 0.001
+#   pretrained: true
+#   freeze_backbone: false
+
+# # Trainer設定
+# trainer:
+#   max_epochs: 10
+#   accelerator: auto
+#   devices: 1
+#   log_every_n_steps: 10
+
+# # Callbacks設定
+# callbacks:
+#   checkpoint:
+#     dirpath: checkpoints/hydra_basic 
+#     filename: model-{epoch:02d}-{val/acc:.3f}
+#     monitor: val/acc
+#     mode: max 
+#     save_top_k: 1
+
+#   early_stopping:
+#     monitor: val/acc
+#     patience: 5
+#     mode: max
+
+#   #Logger設定
+# logger:
+#   tensorboard_logger:
+#         save_dir: tb_logs
+#         name: stl10_hydra 
+#         version: step6b
+
+#   wandb_logger:
+#         project: stl10-lightning
+#         name: efficientnet_b0
+#         log_model: all
+    
+    
+    
+
+      
+      
+      
