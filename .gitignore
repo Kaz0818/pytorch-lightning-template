@@ -1,0 +1,55 @@
+# PyTorch Lightning の出力
+checkpoints/
+tb_logs/
+wandb/
+outputs/
+lightning_logs/
+
+# Hydra の出力
+.hydra/
+multirun/
+
+# データ（大きいファイルは除外）
+data/
+*.zip
+*.tar
+*.tar.gz
+*.csv
+*.jpg
+*.png
+*.jpeg
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 環境変数
+.env
+.env.local
+
+# モデルファイル（大きい場合）
+*.pth
+*.pt
+*.ckpt
+*.safetensors
