@@ -2,6 +2,7 @@
 timmベースのLightningModule（転移学習対応）
 Classification Report & Confusion Matrix対応
 """
+import pandas as pd
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -126,59 +127,81 @@ class TimmLitModule(pl.LightningModule):
         print("\n" + "="*60)
         print("Classification Report")
         print("="*60)
-        report = classification_report(
+        
+        report_report = classification_report(
             all_labels, 
             all_preds, 
             target_names=class_names,
             digits=4
         )
-        print(report)
+        print(report_report)
         
-        # W&Bにテキストとして保存
+        # 辞書形式(W&B用)
+        report_dict = classification_report(
+            all_labels,
+            all_preds,
+            target_names=class_names,
+            output_dict=True
+        )
+        
+        # ========== W&Bに保存（正しい方法） ==========
         if self.logger:
+            #1. Tableとして保存
+            report_df = pd.DataFrame(report_dict).transpose()
             self.logger.experiment.log({
-                "classification_report": report
+                "classification_report_table": wandb.Table(dataframe=report_df)
             })
+            
+            #2. 各クラスのメトリクスを個別に保存
+            for class_name, metrics in report_dict.items():
+                if isinstance(metrics, dict) and 'precision' in metrics:
+                    self.logger.experiment.log({
+                        f"test_metrics/{class_name}/precision": metrics['precision'],
+                        f"test_metrics/{class_name}/recall": metrics['recall'],
+                        f"test_metrics/{class_name}/f1-score": metrics['f1-score'],
+                        f"test_metrics/{class_name}/support": metrics['support'],
+                    })
+                    
+            # 3. 全体のメトリクス
+            self.logger.experiment.log({
+                "test/accuracy": report_dict['accuracy'],
+                "test/macro_avg/precision": report_dict['macro avg']['precision'],
+                "test/macro_avg/recall": report_dict['macro avg']['recall'],
+                "test/macro_avg/f1-score": report_dict['macro avg']['f1-score'],
+                "test/weighted_avg/precision": report_dict['weighted avg']['precision'],
+                "test/weighted_avg/recall": report_dict['weighted avg']['recall'],
+                "test/weighted_avg/f1-score": report_dict['weighted avg']['f1-score'],
+            })
+            
+            print("✅ Classification Report を W&B に保存完了")
+                    
     
         # ========== Confusion Matrix ==========
         cm = confusion_matrix(all_labels, all_preds)
         
-        # 可視化
-        plt.figure(figsize=(12, 10))
-        sns.heatmap(
-            cm, 
-            annot=True, 
-            fmt='d', 
-            cmap='Blues',
-            xticklabels=class_names,
-            yticklabels=class_names
-        )
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
-        plt.title('Confusion Matrix')
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                    xticklabels=class_names, yticklabels=class_names, ax=ax)
+        ax.set_xlabel('Predicted')
+        ax.set_ylabel('True')
+        ax.set_title('Confusion Matrix')
         plt.tight_layout()
         
-        # W&Bに画像として保存
         if self.logger:
+            # W&B専用のインタラクティブ版
             self.logger.experiment.log({
-                "confusion_matrix": plt
+                "confusion_matrix": wandb.plot.confusion_matrix(
+                    probs=None,
+                    y_true=all_labels,
+                    preds=all_preds,
+                    class_names=class_names
+                ),
+                # Seabornのヒートマップ
+                "confusion_matrix_heatmap": wandb.Image(fig)
             })
-
-        # または方法3: W&Bの専用メソッドを使用
-        self.logger.experiment.log({
-            "confusion_matrix_wandb": wandb.plot.confusion_matrix(
-                probs=None,
-                y_true=all_labels,
-                preds=all_preds,
-                class_names=class_names
-            )
-        })
         
-        # ローカルに保存
-        plt.savefig("confusion_matrix.png", dpi=150, bbox_inches='tight')
-        print(f"\n✅ Confusion Matrix saved to: confusion_matrix.png")
-        
-        plt.close()
+        fig.savefig("confusion_matrix.png", dpi=150, bbox_inches='tight')
+        plt.close(fig)
         
         # メモリクリア
         self.test_preds.clear()
