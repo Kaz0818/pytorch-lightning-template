@@ -103,8 +103,8 @@ class TimmLitModule(pl.LightningModule):
         self.test_preds.append(preds)
         self.test_labels.append(y)
         
-        self.log("test/loss", loss, prog_bar=True)
-        self.log("test/acc", acc, prog_bar=True)
+        self.log("test/loss", loss, prog_bar=True, sync_dist=True)
+        self.log("test/acc", acc, prog_bar=True, sync_dist=True)
         return loss
     
     # ========== テスト終了時に呼ばれる ==========
@@ -113,6 +113,11 @@ class TimmLitModule(pl.LightningModule):
         テスト終わった後に呼ばれる
         Classification Report と Confusion Matrixを作成
         """
+    # ========== 分散学習対応（追加） ==========
+    # メインプロセス（Rank 0）だけで実行
+        if not self.trainer.is_global_zero:
+            return
+    # =======================================
         # 全バッチの予測とラベルを結合
         all_preds = torch.cat(self.test_preds).cpu().numpy()
         all_labels = torch.cat(self.test_labels).cpu().numpy()
