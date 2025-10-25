@@ -2,85 +2,69 @@ import pytorch_lightning as pl
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main(cfg: DictConfig):
-
-    # DataModule（_target_ から自動生成）
+    
+    # ========== Rank 0 だけで実行 ==========
+    if pl.utilities.rank_zero_only.rank == 0:
+        print("=" * 60)
+        print("PyTorch Lightning + Hydra (Kaggle)")
+        print("=" * 60)
+        print("\n【読み込まれた設定】")
+        print(OmegaConf.to_yaml(cfg))
+    # =====================================
+    
+    # DataModule
     datamodule = instantiate(cfg.datamodule, _recursive_=False)
-    # ========== クラス名を取得 ==========
-    # setup を呼んでクラス名を取得
     datamodule.prepare_data()
     datamodule.setup(stage="fit")
-    class_names = datamodule.class_names
-    # ==================================
     
-    """
-    メイン実行関数
+    if pl.utilities.rank_zero_only.rank == 0:
+        print("\n✅ DataModule作成完了")
+        print(f"   Train: {len(datamodule.train_dataset)} 枚")
+        print(f"   Val: {len(datamodule.val_dataset)} 枚")
     
-    Hydraのinstantiateで全てのオブジェクトを自動生成
-    """
-    
-    # 設定を表示
-    print("\n【読み込まれた設定】")
-    print(OmegaConf.to_yaml(cfg))
-    
-    # ==========================================================
-    # Hydra instantiate の魔法
-    # _target_ を持つ設定は自動的にオブジェクト化される
-    # ==========================================================
-    
-
-    print("\n✅ DataModule作成完了")
-    
-    # Model（_target_ から自動生成）
+    # Model
     model = instantiate(
         cfg.model,
         optimizer_config=OmegaConf.to_container(cfg.optimizer, resolve=True),
         scheduler_config=OmegaConf.to_container(cfg.scheduler, resolve=True) if 'scheduler' in cfg else None,
         class_names=datamodule.class_names
     )
-    # ======================================================
     
-    print(f"✅ Optimizer: {cfg.optimizer.name}")
-    print(f"✅ Scheduler: {cfg.scheduler.name if 'scheduler' in cfg else 'None'}")
+    if pl.utilities.rank_zero_only.rank == 0:
+        print(f"✅ Model: {cfg.model.model_name}")
+        print(f"✅ Optimizer: {cfg.optimizer.name}")
+        print(f"✅ Scheduler: {cfg.scheduler.name if 'scheduler' in cfg else 'None'}")
     
-    print("✅ Model作成完了")
+    # Logger
+    logger = instantiate(cfg.logger)
     
-    # Logger（_target_ から自動生成）
-    try:
-        logger = instantiate(cfg.logger)
-        print(f"✅ Logger作成完了: {cfg.logger._target_.split('.')[-1]}")
-    except Exception as e:
-        print(f"⚠️  Logger作成失敗: {e}")
-        print("TensorBoardにフォールバック")
-        from pytorch_lightning.loggers import TensorBoardLogger
-        logger = TensorBoardLogger(save_dir="tb_logs", name="fallback")
-    
-    # Callbacks（_target_ から自動生成）
+    # Callbacks
     checkpoint_callback = instantiate(cfg.callbacks.checkpoint)
     early_stop_callback = instantiate(cfg.callbacks.early_stopping)
     callbacks = [checkpoint_callback, early_stop_callback]
-    print("✅ Callbacks作成完了")
     
-    # Trainer（設定から作成、callbacksとloggerを渡す）
-    trainer = pl.Trainer(
-        **cfg.trainer,
-        callbacks=callbacks,
-        logger=logger,
-    )
-    print("✅ Trainer作成完了")
+    # Trainer
+    trainer = pl.Trainer(**cfg.trainer, callbacks=callbacks, logger=logger)
+    
+    if pl.utilities.rank_zero_only.rank == 0:
+        print("\n【訓練開始】")
     
     # 訓練
-    print("\n【訓練開始】")
     trainer.fit(model, datamodule)
     
+    if pl.utilities.rank_zero_only.rank == 0:
+        print("\n【テスト開始】")
+    
     # テスト
-    print("\n【テスト開始】")
     trainer.test(model, datamodule, ckpt_path="best")
     
-    
+    if pl.utilities.rank_zero_only.rank == 0:
+        print("\n✅ 完了！")
 
 
 if __name__ == "__main__":
