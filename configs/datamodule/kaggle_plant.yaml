@@ -1,0 +1,4 @@
+_target_: src.datamodules.kaggle_datamodule.KaggleDataModule
+data_dir: /kaggle/input/plant-disease-recognition-dataset
+batch_size: 64
+num_workers: 2 # kaggle環境では2推奨
