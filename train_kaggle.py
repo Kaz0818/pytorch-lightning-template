@@ -35,7 +35,16 @@ def main(cfg: DictConfig):
     print("\n✅ DataModule作成完了")
     
     # Model（_target_ から自動生成）
-    model = instantiate(cfg.model, class_names=class_names)
+    model = instantiate(
+        cfg.model,
+        optimizer_config=OmegaConf.to_container(cfg.optimizer, resolve=True),
+        scheduler_config=OmegaConf.to_container(cfg.scheduler, resolve=True) if 'scheduler' in cfg else None,
+        class_names=datamodule.class_names
+    )
+    # ======================================================
+    
+    print(f"✅ Optimizer: {cfg.optimizer.name}")
+    print(f"✅ Scheduler: {cfg.scheduler.name if 'scheduler' in cfg else 'None'}")
     
     print("✅ Model作成完了")
     

@@ -212,6 +212,8 @@ class TimmLitModule(pl.LightningModule):
         """
         optimizer_config = self.hparams.optimizer_config
         
+        if optimizer_config is None:
+            raise ValueError("optimizer_configがNoneです。train_kaggle.pyでoptimizer_configを渡してください")
         # Optimizerクラスを動的に取得
         if "lr" not in optimizer_config["params"]:
             optimizer_config["params"]["lr"] = self.hparams.lr
