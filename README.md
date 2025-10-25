@@ -116,18 +116,6 @@ target: src.datamodules.your_dataset_datamodule.YourDataModule
 data_dir: ./data
 batch_size: 32
 
-# 使い方
-!python train.py \
-    datamodule=kaggle_plant \
-    model=efficientnet_b0 \
-    model.num_classes=3 \
-    model.lr=0.0003 \
-    trainer.accelerator=gpu \
-    trainer.devices=2 \
-    trainer.strategy=ddp \
-    trainer.max_epochs=1 \
-    experiment_name="efficientnet_b0_base"
-
 
 ## 📝 License
 
