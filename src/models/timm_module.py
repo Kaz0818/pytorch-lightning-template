@@ -26,6 +26,7 @@ class TimmLitModule(pl.LightningModule):
         self, 
         model_name="efficientnet_b0",
         num_classes=10, 
+        lr=1e-3,
         pretrained=True,
         freeze_backbone=False,
         optimizer_config=None,    # <- Optimizer設定(YAMLから)
@@ -212,6 +213,9 @@ class TimmLitModule(pl.LightningModule):
         optimizer_config = self.hparams.optimizer_config
         
         # Optimizerクラスを動的に取得
+        if "lr" not in optimizer_config["params"]:
+            optimizer_config["params"]["lr"] = self.hparams.lr
+            
         optimizer_class = getattr(torch.optim, optimizer_config['name'])
         optimizer = optimizer_class(
             filter(lambda p: p.requires_grad, self.model.parameters()),
