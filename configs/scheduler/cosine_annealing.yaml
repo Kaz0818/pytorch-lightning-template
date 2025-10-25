@@ -1,0 +1,4 @@
+name: CosineAnnealingLR
+params:
+  T_max: 10
+  eta_min: 1.0e-06

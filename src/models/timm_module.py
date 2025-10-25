@@ -26,9 +26,10 @@ class TimmLitModule(pl.LightningModule):
         self, 
         model_name="efficientnet_b0",
         num_classes=10, 
-        lr=1e-3,
         pretrained=True,
         freeze_backbone=False,
+        optimizer_config=None,    # <- Optimizer設定(YAMLから)
+        scheduler_config=None,    # <- Scheduler設定(YAMLから)
         class_names=None, #クラス名のリスト（オプション)
     ):
         super().__init__()
@@ -76,8 +77,6 @@ class TimmLitModule(pl.LightningModule):
         
         self.log("train/loss", loss, prog_bar=True)
         self.log("train/acc", acc, prog_bar=True)
-        self.log("train/lr", self.optimizers().param_groups[0]['lr'])
-        
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -105,7 +104,6 @@ class TimmLitModule(pl.LightningModule):
         
         self.log("test/loss", loss, prog_bar=True)
         self.log("test/acc", acc, prog_bar=True)
-        
         return loss
     
     # ========== テスト終了時に呼ばれる ==========
@@ -208,22 +206,40 @@ class TimmLitModule(pl.LightningModule):
         self.test_labels.clear()
             
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
+        """
+        YAMLから渡されたOptimizer/Scheduler設定を使用
+        """
+        optimizer_config = self.hparams.optimizer_config
+        
+        # Optimizerクラスを動的に取得
+        optimizer_class = getattr(torch.optim, optimizer_config['name'])
+        optimizer = optimizer_class(
             filter(lambda p: p.requires_grad, self.model.parameters()),
-            lr=self.hparams.lr
+            **optimizer_config['params']
         )
         
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode='max',
-            factor=0.5,
-            patience=3,
-        )
+        # Schedulerがある場合
+        if self.hparams.scheduler_config:
+            scheduler_config = self.hparams.scheduler_config
+            scheduler_class = getattr(
+                torch.optim.lr_scheduler, 
+                scheduler_config['name']
+            )
+            scheduler = scheduler_class(
+                optimizer, 
+                **scheduler_config['params']
+            )
+            
+            # ReduceLROnPlateauの場合はmonitorが必要
+            if scheduler_config['name'] == 'ReduceLROnPlateau':
+                return {
+                    "optimizer": optimizer,
+                    "lr_scheduler": {
+                        "scheduler": scheduler,
+                        "monitor": scheduler_config.get('monitor', 'val/loss'),
+                    }
+                }
+            else:
+                return [optimizer], [scheduler]
         
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "val/acc",
-            }
-        }
+        return optimizer

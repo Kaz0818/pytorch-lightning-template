@@ -12,7 +12,7 @@ def main(cfg: DictConfig):
     """
     
     print("=" * 60)
-    print("Step 6c: Hydra完全統合（defaults + _target_）")
+    print("PyTorch Lightning + Hydra (Optimizer/Scheduler YAML対応)")
     print("=" * 60)
     
     # 設定を表示
@@ -26,11 +26,23 @@ def main(cfg: DictConfig):
     
     # DataModule（_target_ から自動生成）
     datamodule = instantiate(cfg.datamodule, _recursive_=False)
+    datamodule.prepare_data()
+    datamodule.setup(stage="fit")
     print("\n✅ DataModule作成完了")
     
-    # Model（_target_ から自動生成）
-    model = instantiate(cfg.model)
-    print("✅ Model作成完了")
+    # ========== Optimizer/Scheduler設定を渡す ==========
+    model = instantiate(
+        cfg.model, optimizer_config=OmegaConf.to_container(
+            cfg.optimizer, resolve=True
+        ),
+        scheduler_config=OmegaConf.to_container(
+            cfg.scheduler, resolve=True
+        ) if "scheduler" in cfg else None,
+        class_names=datamodule.class_names
+    )
+    
+    print(f"✅ Optimizer: {cfg.optimizer.name}")
+    print(f"✅ Scheduler: {cfg.scheduler.name if 'scheduler' in cfg else 'None'}")
     
     # Logger（_target_ から自動生成）
     try:
@@ -65,31 +77,6 @@ def main(cfg: DictConfig):
     trainer.test(model, datamodule, ckpt_path="best")
     
     print("\n" + "=" * 60)
-    print("✅ Step 6c完了！PyTorch Lightning完全マスター！")
-    print("=" * 60)
-    print("\n学んだこと:")
-    print("- defaults: 複数の設定ファイルを組み合わせ")
-    print("- _target_: クラスパスを指定して自動インスタンス化")
-    print("- instantiate(): _target_ を持つ設定からオブジェクト生成")
-    print("- 設定ファイルだけで全てを管理")
-    print("- コマンドラインで簡単に切り替え")
-    
-    print("\n便利なコマンド例:")
-    print("  # 基本実行（W&B使用）")
-    print("  python train_final.py")
-    print("\n  # TensorBoardに切り替え")
-    print("  python train_final.py logger=tensorboard")
-    print("\n  # モデルを変更")
-    print("  python train_final.py model=resnet18")
-    print("  python train_final.py model=efficientnet_b3")
-    print("\n  # 転移学習モード")
-    print("  python train_final.py model.freeze_backbone=true model.lr=0.001")
-    print("\n  # バッチサイズとエポック数を変更")
-    print("  python train_final.py datamodule.batch_size=64 trainer.max_epochs=20")
-    print("\n  # 複数の設定を組み合わせ")
-    print("  python train_final.py model=resnet18 logger=tensorboard trainer.max_epochs=5")
-    print("\n  # 実験名を設定")
-    print("  python train_final.py experiment_name=exp001_resnet18")
 
 
 if __name__ == "__main__":

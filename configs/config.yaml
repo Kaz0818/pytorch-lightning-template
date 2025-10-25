@@ -4,6 +4,8 @@ defaults:
   - logger: wandb                 # logger/wandb.yaml を読み込む（デフォルト）
   - callbacks: default            # callbacks/default.yaml を読み込む
   - trainer: default              # trainer/default.yaml を読み込む
+  - optimizer: adam               # optimizer/adam.yaml　　　を読み込む
+  - scheduler: reduce_on_plateau  # scheduler/reduce_on_plateau を読み込む
   - _self_                        # このファイルの設定を最後に適用
 
 # 実験名（オーバーライド可能）
@@ -13,10 +15,4 @@ experiment_name: stl10_final
 hydra:
   run:
     dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
-    
-    
-    
-
-      
-      
       
